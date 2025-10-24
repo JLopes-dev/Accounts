@@ -19,7 +19,7 @@ Este projeto foi desenvolvido em **JavaScript com Node.js**, com o objetivo de s
 
 ## 🚀 Como clonar e iniciar o projeto
 
-### 📍 1. Clonar o repositório
+### 📍 1. Clonar o repositório e executá-lo em sua máquina
 
 ```bash
 git clone https://github.com/JLopes-dev/Accounts.git
