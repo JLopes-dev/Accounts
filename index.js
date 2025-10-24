@@ -73,6 +73,12 @@ function construirConta() {
     .then((resposta) => {
       const accountName = resposta.AccountName.toString().toUpperCase();
 
+      inquirer.prompt([{
+        name: "accountPassword",
+        message: "Digite a senha para sua conta:"
+      }]).then(respostaDois => {
+
+     
       if (!fs.existsSync("./accounts")) {
         fs.mkdirSync("./accounts");
       }
@@ -85,12 +91,13 @@ function construirConta() {
 
       fs.writeFileSync(
         `./accounts/${accountName}.json`,
-        JSON.stringify({ balance: 0 })
+        JSON.stringify({ balance: 0, password: respostaDois.accountPassword})
       );
 
       console.log(defaultColor("Conta criada com sucesso!"));
       prompt();
     })
+     }).catch(err => console.log(err))
     .catch((err) => console.log(err));
 }
 
@@ -153,12 +160,82 @@ function getFile(accountName) {
 }
 
 
-function consultarSaldo() {
-  console.log("Função Consultar Saldo ainda não implementada.");
-  prompt();
+function consultarSaldo(accountName) {
+  return prompt();
 }
 
 function sacar() {
-  console.log("Função Sacar ainda não implementada.");
+  inquirer.prompt([
+    {
+      name: "accountName",
+      message: "Digite o nome da sua conta:"
+    }
+  ]).then(resposta => {
+    const accountName = resposta.accountName.toString().toUpperCase();
+
+    if (!checarExistenciaDeArquivo(accountName)) {
+      console.log("Essa conta não existe. Tente novamente.");
+      return prompt();
+    }
+
+    inquirer.prompt([
+      {
+        name: "accountPassword",
+        message: "Digite sua senha:"
+      }
+    ]).then(respostaDois => {
+      const file = getFile(accountName);
+
+      if (file.password !== respostaDois.accountPassword) {
+        console.log(defaultColor("Nome ou senha inválidos!"));
+        return prompt();
+      }
+
+      inquirer.prompt([
+        {
+          name: "valor",
+          message: "Quanto deseja sacar?"
+        }
+      ]).then(respostaTres => {
+        if (!respostaTres.valor || isNaN(respostaTres.valor) || parseFloat(respostaTres.valor) <= 0) {
+          console.log(defaultColor("É necessário inserir um valor válido."));
+          return prompt();
+        }
+
+        if (parseFloat(respostaTres.valor) > file.balance) {
+          console.log(defaultColor("Saldo insuficiente."));
+          return prompt();
+        }
+
+        file.balance -= parseFloat(respostaTres.valor);
+        fs.writeFileSync(`./accounts/${accountName}.json`, JSON.stringify(file));
+        console.log(defaultColor("Saque efetuado com sucesso!"));
+        prompt();
+      });
+
+    });
+
+  }).catch(err => console.log(err));
+}
+
+function consultarSaldoValidacoes() {
+  
   prompt();
 }
+
+
+/*
+
+
+
+
+
+
+
+
+
+
+
+            
+
+*/
