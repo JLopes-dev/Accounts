@@ -1,23 +1,20 @@
-// Módulos Externos
+// External Modules
 import chalk from "chalk";
 import inquirer from "inquirer";
-
-// Módulos Internos
 import fs from "fs";
 
 const defaultColor = chalk.bold.bgBlack.white;
 console.log("Projeto Accounts");
 
-prompt();
+mainMenu();
 
-function prompt() {
+function mainMenu() {
   inquirer
     .prompt([
       {
         type: "list",
         name: "action",
         message: "O que você deseja fazer?",
-
         choices: [
           "Criar Conta",
           "Consultar Saldo",
@@ -27,22 +24,22 @@ function prompt() {
         ],
       },
     ])
-    .then((resposta) => {
-      switch (resposta.action) {
+    .then((answer) => {
+      switch (answer.action) {
         case "Criar Conta":
-          criarConta();
+          createAccount();
           break;
 
         case "Consultar Saldo":
-          consultarSaldo();
+          checkBalance();
           break;
 
         case "Depositar":
-          deposito();
+          deposit();
           break;
 
         case "Sacar":
-          sacar();
+          withdraw();
           break;
 
         case "Sair":
@@ -56,52 +53,65 @@ function prompt() {
     .catch((err) => console.log("Error", err));
 }
 
-function criarConta() {
+function createAccount() {
   console.log(defaultColor("Parabéns por escolher o nosso banco!"));
   console.log(defaultColor("Defina as opções da sua conta a seguir"));
-  construirConta();
+  buildAccount();
 }
 
-function construirConta() {
+function buildAccount() {
   inquirer
     .prompt([
       {
-        name: "AccountName",
+        name: "accountName",
         message: "Digite um nome para sua conta:",
       },
     ])
-    .then((resposta) => {
-      const accountName = resposta.AccountName.toString().toUpperCase();
+    .then((answer) => {
+      const accountName = answer.accountName.toString().toUpperCase();
 
-      inquirer.prompt([{
-        name: "accountPassword",
-        message: "Digite a senha para sua conta:"
-      }]).then(respostaDois => {
+      inquirer
+        .prompt([
+          {
+            name: "accountPassword",
+            message: "Digite a senha para sua conta:",
+          },
+        ])
+        .then((answerTwo) => {
+          if (!fs.existsSync("./accounts")) {
+            fs.mkdirSync("./accounts");
+          }
 
-     
-      if (!fs.existsSync("./accounts")) {
-        fs.mkdirSync("./accounts");
-      }
+          if (fs.existsSync(`./accounts/${accountName}.json`)) {
+            console.log(defaultColor("A conta já existe, escolha outro nome!"));
+            return buildAccount();
+          }
 
-      if (fs.existsSync(`./accounts/${accountName}.json`)) {
-        console.log(defaultColor("A conta já existe, escolha outro nome!"));
-        construirConta();
-        return;
-      }
+          fs.writeFileSync(
+            `./accounts/${accountName}.json`,
+            JSON.stringify({ balance: 0, password: answerTwo.accountPassword })
+          );
 
-      fs.writeFileSync(
-        `./accounts/${accountName}.json`,
-        JSON.stringify({ balance: 0, password: respostaDois.accountPassword})
-      );
-
-      console.log(defaultColor("Conta criada com sucesso!"));
-      prompt();
+          console.log(defaultColor("Conta criada com sucesso!"));
+          mainMenu();
+        });
     })
-     }).catch(err => console.log(err))
     .catch((err) => console.log(err));
 }
 
-function deposito() {
+function checkFileExistence(accountName) {
+  return fs.existsSync(`./accounts/${accountName}.json`);
+}
+
+function getAccountData(accountName) {
+  const file = fs.readFileSync(`./accounts/${accountName}.json`, {
+    encoding: "utf-8",
+    flag: "r",
+  });
+  return JSON.parse(file);
+}
+
+function deposit() {
   inquirer
     .prompt([
       {
@@ -109,133 +119,148 @@ function deposito() {
         message: "Qual o nome da sua conta?",
       },
     ])
-    .then((resposta) => {
-      const accountName = resposta.accountName.toString().toUpperCase();
+    .then((answer) => {
+      const accountName = answer.accountName.toString().toUpperCase();
 
-      if (!checarExistenciaDeArquivo(accountName)) {
+      if (!checkFileExistence(accountName)) {
         console.log("Essa conta não existe. Tente novamente.");
-        return deposito();
+        return deposit();
       }
 
       inquirer
         .prompt([
           {
-            name: "valor",
+            name: "amount",
             message: "Quanto deseja depositar?",
           },
         ])
-        .then((respostaDois) => {
-          if (!respostaDois.valor || isNaN(respostaDois.valor) || respostaDois.valor <= 0) {
+        .then((answerTwo) => {
+          if (
+            !answerTwo.amount ||
+            isNaN(answerTwo.amount) ||
+            answerTwo.amount <= 0
+          ) {
             console.log("É necessário inserir um valor válido.");
-            return deposito();
+            return deposit();
           }
-          depositar(accountName, respostaDois.valor);
+
+          let accountData = getAccountData(accountName);
+          accountData.balance =
+            parseFloat(accountData.balance) + parseFloat(answerTwo.amount);
+
+          fs.writeFileSync(
+            `./accounts/${accountName}.json`,
+            JSON.stringify(accountData)
+          );
           console.log("Depósito realizado com sucesso!");
-          prompt();
+          mainMenu();
         });
     })
     .catch((err) => console.log(err));
 }
 
-function checarExistenciaDeArquivo(nome) {
-  return fs.existsSync(`./accounts/${nome}.json`);
-}
-
-function depositar(accountName, valor) {
-  let conteudo = getFile(accountName);
-  conteudo.balance =
-    parseFloat(conteudo.balance) + parseFloat(valor);
-  fs.writeFileSync(
-    `./accounts/${accountName}.json`,
-    JSON.stringify(conteudo)
-  );
-}
-
-function getFile(accountName) {
-  const file = fs.readFileSync(
-    `./accounts/${accountName}.json`,
-    { encoding: "utf-8", flag: "r" }
-  );
-  return JSON.parse(file);
-}
-
-
-function consultarSaldo(accountName) {
-  return prompt();
-}
-
-function sacar() {
-  inquirer.prompt([
-    {
-      name: "accountName",
-      message: "Digite o nome da sua conta:"
-    }
-  ]).then(resposta => {
-    const accountName = resposta.accountName.toString().toUpperCase();
-
-    if (!checarExistenciaDeArquivo(accountName)) {
-      console.log("Essa conta não existe. Tente novamente.");
-      return prompt();
-    }
-
-    inquirer.prompt([
+function withdraw() {
+  inquirer
+    .prompt([
       {
-        name: "accountPassword",
-        message: "Digite sua senha:"
+        name: "accountName",
+        message: "Digite o nome da sua conta:",
+      },
+    ])
+    .then((answer) => {
+      const accountName = answer.accountName.toString().toUpperCase();
+
+      if (!checkFileExistence(accountName)) {
+        console.log("Essa conta não existe. Tente novamente.");
+        return mainMenu();
       }
-    ]).then(respostaDois => {
-      const file = getFile(accountName);
 
-      if (file.password !== respostaDois.accountPassword) {
-        console.log(defaultColor("Nome ou senha inválidos!"));
-        return prompt();
-      }
+      inquirer
+        .prompt([
+          {
+            name: "accountPassword",
+            message: "Digite sua senha:",
+          },
+        ])
+        .then((answerTwo) => {
+          const accountData = getAccountData(accountName);
 
-      inquirer.prompt([
-        {
-          name: "valor",
-          message: "Quanto deseja sacar?"
-        }
-      ]).then(respostaTres => {
-        if (!respostaTres.valor || isNaN(respostaTres.valor) || parseFloat(respostaTres.valor) <= 0) {
-          console.log(defaultColor("É necessário inserir um valor válido."));
-          return prompt();
-        }
+          if (accountData.password !== answerTwo.accountPassword) {
+            console.log(defaultColor("Nome ou senha inválidos!"));
+            return mainMenu();
+          }
 
-        if (parseFloat(respostaTres.valor) > file.balance) {
-          console.log(defaultColor("Saldo insuficiente."));
-          return prompt();
-        }
+          inquirer
+            .prompt([
+              {
+                name: "amount",
+                message: "Quanto deseja sacar?",
+              },
+            ])
+            .then((answerThree) => {
+              if (
+                !answerThree.amount ||
+                isNaN(answerThree.amount) ||
+                parseFloat(answerThree.amount) <= 0
+              ) {
+                console.log(defaultColor("É necessário inserir um valor válido."));
+                return mainMenu();
+              }
 
-        file.balance -= parseFloat(respostaTres.valor);
-        fs.writeFileSync(`./accounts/${accountName}.json`, JSON.stringify(file));
-        console.log(defaultColor("Saque efetuado com sucesso!"));
-        prompt();
-      });
+              if (parseFloat(answerThree.amount) > accountData.balance) {
+                console.log(defaultColor("Saldo insuficiente."));
+                return mainMenu();
+              }
 
-    });
-
-  }).catch(err => console.log(err));
+              accountData.balance -= parseFloat(answerThree.amount);
+              fs.writeFileSync(
+                `./accounts/${accountName}.json`,
+                JSON.stringify(accountData)
+              );
+              console.log(defaultColor("Saque efetuado com sucesso!"));
+              mainMenu();
+            });
+        });
+    })
+    .catch((err) => console.log(err));
 }
 
-function consultarSaldoValidacoes() {
-  
-  prompt();
+function checkBalance() {
+  inquirer
+    .prompt([
+      {
+        name: "accountName",
+        message: "Digite o nome da sua conta:",
+      },
+    ])
+    .then((answer) => {
+      const accountName = answer.accountName.toString().toUpperCase();
+
+      if (!checkFileExistence(accountName)) {
+        console.log("Essa conta não existe. Tente novamente.");
+        return mainMenu();
+      }
+
+      inquirer
+        .prompt([
+          {
+            name: "accountPassword",
+            message: "Digite sua senha:",
+          },
+        ])
+        .then((answerTwo) => {
+          const accountData = getAccountData(accountName);
+
+          if (accountData.password !== answerTwo.accountPassword) {
+            console.log(defaultColor("Nome ou senha inválidos!"));
+            return mainMenu();
+          }
+
+          console.log(
+            defaultColor(`Seu saldo atual é: R$ ${accountData.balance}`)
+          );
+          mainMenu();
+        });
+    })
+    .catch((err) => console.log(err));
 }
-
-
-/*
-
-
-
-
-
-
-
-
-
-
-
-            
-
-*/
